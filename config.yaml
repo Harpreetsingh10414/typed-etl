@@ -1,0 +1,3 @@
+max_attempts: -10
+wait_min: 1
+wait_max: 30

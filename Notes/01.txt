@@ -1,0 +1,10 @@
+After Day 1 you’ll understand:
+modern Python packaging
+virtual environments properly
+src-layout
+dependency management with uv
+static typing setup
+linting pipeline
+project hygiene
+pre-commit automation
+reproducible builds
