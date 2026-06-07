@@ -1,4 +1,10 @@
 from typed_etl.config_loader import load_config
+from typed_etl.logger import (
+    bind_correlation_id,
+    configure_logging,
+    get_logger,
+    log_context,
+)
 from typed_etl.models import (
     BaseConfig,
     FileReaderConfig,
@@ -6,12 +12,16 @@ from typed_etl.models import (
     RetryPolicy,
 )
 
+__version__ = "0.1.0"
+
 __all__ = [
     "load_config",
     "BaseConfig",
     "RetryPolicy",
     "LogContext",
     "FileReaderConfig",
+    "configure_logging",
+    "get_logger",
+    "bind_correlation_id",
+    "log_context",
 ]
-
-__version__ = "0.1.0"

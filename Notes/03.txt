@@ -1,0 +1,775 @@
+This is exactly the right approach.
+
+If you can **explain Day 3 like a software engineer**, then you've actually learned it. If you can only copy the code, then you haven't.
+
+---
+
+# Day 3 Notes — Structured Logging & Correlation IDs
+
+---
+
+# What Was the Goal of Day 3?
+
+Before Day 3, our project could:
+
+```python id="n1qz0f"
+config = load_config(...)
+```
+
+But we had no visibility into what the application was doing.
+
+Imagine:
+
+```text id="it2mup"
+Load Config
+↓
+Read File
+↓
+Transform Data
+↓
+Call API
+↓
+Save To Database
+```
+
+If something fails:
+
+```text id="z8zx4l"
+Where did it fail?
+Which file failed?
+Which pipeline run failed?
+How long did it take?
+```
+
+We have no answers.
+
+So Day 3 solved:
+
+```text id="bd4k6l"
+Observability Problem
+```
+
+---
+
+# What is Observability?
+
+Observability means:
+
+> Ability to understand what a system is doing internally by looking at its outputs.
+
+Outputs include:
+
+```text id="u90rcl"
+Logs
+Metrics
+Traces
+Events
+```
+
+Day 3 focuses on:
+
+```text id="t6vtn8"
+Structured Logs
+```
+
+---
+
+# Traditional Logging Problem
+
+Most beginners write:
+
+```python id="l08p1w"
+print("file loaded")
+print("database connected")
+print("api failed")
+```
+
+Output:
+
+```text id="4fjlwm"
+file loaded
+database connected
+api failed
+```
+
+Problems:
+
+* No timestamp
+* No severity
+* No tracking
+* No searchability
+* No metadata
+
+In production, this is almost useless.
+
+---
+
+# Structured Logging
+
+Instead we built:
+
+```python id="4ft16i"
+logger.info(
+    "file_loaded",
+    filename="employees.csv",
+    rows=1000,
+)
+```
+
+Output:
+
+```json id="g1u3o9"
+{
+  "event": "file_loaded",
+  "filename": "employees.csv",
+  "rows": 1000,
+  "timestamp": "...",
+  "level": "info"
+}
+```
+
+This is called:
+
+```text id="c43d34"
+Structured Logging
+```
+
+because every log has structure.
+
+---
+
+# Why Structured Logs Matter
+
+Imagine:
+
+```text id="5q5hjp"
+1000 ETL jobs running daily
+```
+
+Want to find:
+
+```text id="epw6z7"
+all failed API calls
+```
+
+With plain text logs:
+
+```text id="nppf9v"
+Very difficult
+```
+
+With structured logs:
+
+```text id="w26hjl"
+level=error
+event=api_failed
+```
+
+Easy.
+
+---
+
+# What is Structlog?
+
+We used:
+
+```python id="yl6b3f"
+structlog
+```
+
+Why?
+
+Because Python's default logging is verbose and harder to structure.
+
+Structlog provides:
+
+```text id="p0jlxb"
+Structured Events
+Context Propagation
+JSON Output
+Cleaner APIs
+```
+
+---
+
+# Core Functions We Built
+
+---
+
+# 1. configure_logging()
+
+Purpose:
+
+```python id="em92cl"
+configure_logging()
+```
+
+Configures the entire logging system.
+
+Without this:
+
+```python id="3xejcq"
+logger.info(...)
+```
+
+would not know:
+
+* format
+* renderer
+* processors
+
+---
+
+# What Happens Internally?
+
+We configured:
+
+```python id="6xx7n4"
+JSONRenderer()
+```
+
+which converts:
+
+```python id="8g7u4l"
+logger.info("started")
+```
+
+into:
+
+```json id="2m1hfd"
+{
+  "event":"started"
+}
+```
+
+---
+
+# Real World Example
+
+Companies:
+
+* Uber
+* Netflix
+* Airbnb
+
+send JSON logs to:
+
+* Datadog
+* Splunk
+* ELK Stack
+* Grafana
+
+because machines can analyze JSON.
+
+---
+
+# 2. get_logger()
+
+Purpose:
+
+```python id="5uxvvk"
+logger = get_logger()
+```
+
+Instead of:
+
+```python id="ynr2xh"
+structlog.get_logger()
+```
+
+everywhere.
+
+---
+
+# Why?
+
+Abstraction.
+
+If tomorrow we switch:
+
+```text id="c6srf0"
+Structlog → Loguru
+```
+
+only one file changes.
+
+Not the whole codebase.
+
+This is software engineering.
+
+---
+
+# 3. bind_correlation_id()
+
+Most important concept of Day 3.
+
+---
+
+# Problem
+
+Imagine:
+
+```text id="a6wl8n"
+Pipeline A
+Pipeline B
+Pipeline C
+```
+
+running simultaneously.
+
+Logs:
+
+```text id="m44b2g"
+Started
+Started
+Started
+API Failed
+CSV Loaded
+Finished
+```
+
+Which pipeline generated which log?
+
+Impossible to know.
+
+---
+
+# Solution
+
+Generate:
+
+```text id="3jlp6g"
+abc123
+```
+
+and attach it everywhere.
+
+Example:
+
+```python id="ndxz6i"
+bind_correlation_id()
+```
+
+creates:
+
+```text id="e83d71"
+38ec70c3-6a69-460e-8292-30d38747ddeb
+```
+
+---
+
+# Result
+
+Every log contains:
+
+```json id="n80lj8"
+{
+  "correlation_id": "38ec70..."
+}
+```
+
+Now we can search:
+
+```text id="1twr8g"
+correlation_id=38ec70...
+```
+
+and see the complete execution flow.
+
+---
+
+# Real World Example
+
+Suppose:
+
+```text id="d6eg2m"
+User uploads resume
+↓
+Validation
+↓
+AI Analysis
+↓
+Database Save
+↓
+Email Send
+```
+
+Thousands happen daily.
+
+Correlation ID lets engineers trace one specific request.
+
+This is used by:
+
+* AWS
+* Stripe
+* Netflix
+* Uber
+
+every second.
+
+---
+
+# 4. log_context()
+
+Purpose:
+
+```python id="f06jwu"
+with log_context(
+    job_name="employee_ingestion"
+):
+```
+
+---
+
+# Problem
+
+Without context:
+
+```python id="r6rqbj"
+logger.info(...)
+logger.info(...)
+logger.info(...)
+```
+
+Need to pass:
+
+```python id="6i79cf"
+job_name
+source
+pipeline
+```
+
+every time.
+
+Annoying.
+
+---
+
+# Solution
+
+Context Binding.
+
+Write once:
+
+```python id="5k4y5v"
+with log_context(
+    job_name="employee_ingestion"
+):
+```
+
+Everything inside automatically gets:
+
+```json id="y58yzv"
+{
+  "job_name": "employee_ingestion"
+}
+```
+
+---
+
+# Real World Example
+
+Airflow DAG:
+
+```text id="i52ef8"
+dag_name=daily_load
+```
+
+Instead of passing:
+
+```python id="vjlwmu"
+dag_name
+```
+
+to every log,
+
+bind once.
+
+Huge productivity gain.
+
+---
+
+# Understanding Structlog Processors
+
+We configured:
+
+```python id="zzj3wt"
+processors=[
+ ...
+]
+```
+
+Think of processors as:
+
+```text id="ph5mwx"
+Log Pipeline
+```
+
+---
+
+# Processor 1
+
+```python id="6sqv2j"
+merge_contextvars
+```
+
+Purpose:
+
+Inject correlation ID and context.
+
+Without this:
+
+```json id="e0u5nn"
+correlation_id
+```
+
+would never appear.
+
+---
+
+# Processor 2
+
+```python id="mzd77g"
+add_log_level
+```
+
+Adds:
+
+```json id="l9b7eq"
+{
+ "level":"info"
+}
+```
+
+---
+
+# Processor 3
+
+```python id="o2icwb"
+add_logger_name
+```
+
+Adds:
+
+```json id="l7phhn"
+{
+ "logger":"__main__"
+}
+```
+
+---
+
+# Processor 4
+
+```python id="5s5g58"
+TimeStamper
+```
+
+Adds:
+
+```json id="crmy6g"
+{
+ "timestamp":"2026..."
+}
+```
+
+---
+
+# Processor 5
+
+```python id="ljlwmv"
+JSONRenderer
+```
+
+Converts final output to JSON.
+
+---
+
+# Errors We Encountered
+
+These are extremely important notes.
+
+---
+
+# Error 1
+
+```text id="lf1u38"
+Returning Any from function declared to return BoundLogger
+```
+
+---
+
+## Why?
+
+Structlog typing isn't perfect.
+
+Mypy saw:
+
+```python id="9h7oaq"
+Any
+```
+
+instead of:
+
+```python id="uzhhx5"
+BoundLogger
+```
+
+---
+
+## Fix
+
+```python id="xq4eh7"
+cast(
+    BoundLogger,
+    structlog.get_logger()
+)
+```
+
+---
+
+## Lesson
+
+Static type checkers sometimes need help understanding third-party libraries.
+
+---
+
+# Error 2
+
+```text id="0trte5"
+PrintLogger has no attribute name
+```
+
+---
+
+## Why?
+
+Structlog created:
+
+```text id="m6tspq"
+PrintLogger
+```
+
+but:
+
+```python id="3tl19l"
+add_logger_name
+```
+
+expects:
+
+```text id="bxfjr0"
+logging.Logger
+```
+
+---
+
+## Fix
+
+```python id="ctg82t"
+logger_factory=structlog.stdlib.LoggerFactory()
+```
+
+and
+
+```python id="jvjlwm"
+wrapper_class=structlog.stdlib.BoundLogger
+```
+
+---
+
+## Lesson
+
+Always understand how libraries are wired internally.
+
+Don't blindly copy code.
+
+---
+
+# Error 3
+
+```text id="1glncz"
+Import block is un-sorted
+```
+
+---
+
+## Why?
+
+Ruff enforces import order.
+
+---
+
+## Fix
+
+```bash id="zhhjns"
+uv run ruff check . --fix
+```
+
+---
+
+## Lesson
+
+Automation enforces consistency.
+
+Humans shouldn't manually format code.
+
+---
+
+# Business Impact of Day 3
+
+Without Day 3:
+
+```text id="c6a6xm"
+Hard to debug
+Hard to trace
+Hard to monitor
+Hard to operate
+```
+
+With Day 3:
+
+```text id="vjlwmx"
+Traceable
+Observable
+Searchable
+Production Ready
+```
+
+---
+
+# Interview Questions You Can Now Answer
+
+### Why structured logging over print statements?
+
+Because logs become machine-readable, searchable, and analyzable.
+
+---
+
+### What is a correlation ID?
+
+A unique identifier attached to every log/event belonging to a single workflow execution.
+
+---
+
+### Why context-based logging?
+
+To avoid repeatedly passing the same metadata to every log statement.
+
+---
+
+### Why JSON logs?
+
+Monitoring platforms parse JSON efficiently and allow powerful querying.
+
+---
+
+### What is observability?
+
+The ability to understand internal system behavior through external outputs like logs, metrics, and traces.
+
+---
+
+# Final One-Line Summary
+
+**Day 3 transformed the project from a simple utility library into an observable production-ready platform component by introducing structured JSON logging, correlation IDs, context propagation, and centralized logging configuration.**
