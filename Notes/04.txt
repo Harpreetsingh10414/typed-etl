@@ -1,0 +1,799 @@
+# Day 4 Notes — Retry Framework & Fault Tolerance
+
+Day 4 is one of the most important days of the entire project because we moved from:
+
+```text id="2n39sa"
+Observable System
+```
+
+to
+
+```text id="j7gtj0"
+Resilient System
+```
+
+A system that can log failures is useful.
+
+A system that can automatically recover from failures is production-ready.
+
+---
+
+# What Was The Goal Of Day 4?
+
+The goal was to build a reusable retry framework that can:
+
+* Automatically recover from transient failures
+* Use exponential backoff
+* Log retry attempts
+* Support typed configuration
+* Hide Tenacity internals
+* Be reusable across all future ETL projects
+
+---
+
+# What Problem Are We Solving?
+
+Imagine:
+
+```text id="6s3ikq"
+ETL Job
+   ↓
+API Call
+   ↓
+Database Insert
+```
+
+Temporary network issue:
+
+```text id="56dk8q"
+ConnectionError
+```
+
+Without retry:
+
+```text id="7sl4po"
+Pipeline Fails
+Job Fails
+Alert Triggered
+```
+
+Even though the service would recover after 2 seconds.
+
+---
+
+# Why Retry Exists
+
+In distributed systems:
+
+```text id="4qfngm"
+Failures are normal.
+```
+
+Examples:
+
+### API Failures
+
+```text id="5wwbjv"
+429 Too Many Requests
+503 Service Unavailable
+Gateway Timeout
+```
+
+### Database Failures
+
+```text id="j54zql"
+Connection Reset
+Temporary Lock
+Pool Exhaustion
+```
+
+### Cloud Failures
+
+```text id="m9f3ql"
+S3 Timeout
+Azure Blob Timeout
+Network Glitch
+```
+
+These failures are usually temporary.
+
+Retry allows the system to recover automatically.
+
+---
+
+# What We Built
+
+---
+
+# RetryPolicy Enhancement
+
+Before Day 4:
+
+```python id="8x2ozw"
+RetryPolicy
+```
+
+was only storing:
+
+```python id="uxs79l"
+max_attempts
+wait_min
+wait_max
+```
+
+We enhanced it with:
+
+```python id="qud5sv"
+reraise
+use_jitter
+```
+
+---
+
+## Why?
+
+Different applications need different retry behavior.
+
+Example:
+
+### Production
+
+```python id="5k5c5f"
+use_jitter=True
+```
+
+to avoid synchronized retry storms.
+
+### Development
+
+```python id="vj8x0m"
+use_jitter=False
+```
+
+for predictable behavior.
+
+---
+
+# What Is Jitter?
+
+Without jitter:
+
+```text id="5s1jpk"
+Service A
+Service B
+Service C
+
+Fail at same time
+```
+
+All retry:
+
+```text id="db2ptj"
+1 second
+2 seconds
+4 seconds
+```
+
+at exactly the same moment.
+
+This can overload the service.
+
+---
+
+# With Jitter
+
+Instead:
+
+```text id="5xvk8e"
+1.2 sec
+1.8 sec
+2.3 sec
+```
+
+Retries become randomized.
+
+Much safer.
+
+---
+
+# Custom Retry Decorator
+
+We created:
+
+```python id="qzt7g7"
+@retry(...)
+```
+
+instead of exposing:
+
+```python id="jlwmz0"
+@tenacity.retry(...)
+```
+
+---
+
+# Why?
+
+This is called:
+
+```text id="utjlwm"
+Abstraction Layer
+```
+
+Users should depend on:
+
+```python id="jlwmz1"
+typed_etl.retry
+```
+
+not:
+
+```python id="jlwmz2"
+tenacity.retry
+```
+
+---
+
+# Real Engineering Benefit
+
+Suppose in future we replace:
+
+```text id="jlwmz3"
+Tenacity
+```
+
+with another retry library.
+
+Users do NOT need to change code.
+
+Only our implementation changes.
+
+---
+
+# Exponential Backoff
+
+We implemented:
+
+```text id="jlwmz4"
+1 sec
+2 sec
+4 sec
+8 sec
+16 sec
+```
+
+instead of:
+
+```text id="jlwmz5"
+1 sec
+1 sec
+1 sec
+1 sec
+```
+
+---
+
+# Why?
+
+When a service is struggling:
+
+Bad:
+
+```text id="jlwmz6"
+Retry Immediately
+Retry Immediately
+Retry Immediately
+```
+
+This increases load.
+
+---
+
+# Better
+
+```text id="jlwmz7"
+Wait Longer
+Retry
+```
+
+This gives the service time to recover.
+
+---
+
+# Retry Logging
+
+We integrated Day 4 with Day 3.
+
+Every retry attempt logs:
+
+```json id="jlwmz8"
+{
+  "event":"retry_attempt",
+  "attempt":2,
+  "exception":"ConnectionError"
+}
+```
+
+---
+
+# Why This Matters
+
+Imagine production issue:
+
+```text id="jlwmz9"
+Why is this pipeline slow?
+```
+
+Logs now show:
+
+```json id="jlwmza"
+{
+  "attempt":1
+}
+{
+  "attempt":2
+}
+{
+  "attempt":3
+}
+```
+
+You immediately understand:
+
+```text id="jlwmzb"
+Retries are occurring.
+```
+
+---
+
+# MaxRetriesExceededError
+
+We enhanced:
+
+```python id="jlwmzc"
+MaxRetriesExceededError
+```
+
+to include:
+
+```python id="jlwmzd"
+function_name
+attempts
+original_exception
+```
+
+---
+
+# Why?
+
+Bad:
+
+```python id="jlwmze"
+Exception("failed")
+```
+
+Provides little information.
+
+---
+
+# Better
+
+```text id="jlwmzf"
+Function 'fetch_jobs'
+failed after 5 attempts
+Last error: ConnectionError
+```
+
+Now debugging becomes much easier.
+
+---
+
+# Advanced Typing Concepts Learned
+
+Day 4 introduced some advanced Python typing concepts.
+
+---
+
+# ParamSpec
+
+We used:
+
+```python id="jlwmzg"
+P = ParamSpec("P")
+```
+
+---
+
+## Why?
+
+Decorators often destroy function signatures.
+
+Without ParamSpec:
+
+```python id="jlwmzh"
+def wrapper(*args, **kwargs)
+```
+
+loses type information.
+
+---
+
+## Example
+
+Original:
+
+```python id="jlwmzi"
+def fetch_data(
+    user_id: int
+) -> str:
+```
+
+After decorator:
+
+Type checker still understands:
+
+```python id="jlwmzj"
+user_id: int
+```
+
+This is very powerful.
+
+---
+
+# TypeVar
+
+We used:
+
+```python id="jlwmzk"
+R = TypeVar("R")
+```
+
+---
+
+## Why?
+
+Preserves return type.
+
+Example:
+
+```python id="jlwmzl"
+def fetch_data() -> str
+```
+
+remains:
+
+```python id="jlwmzm"
+str
+```
+
+after decoration.
+
+---
+
+# Real Engineering Impact
+
+Without ParamSpec + TypeVar:
+
+```text id="jlwmzn"
+Autocomplete breaks
+Type checking breaks
+IDE support degrades
+```
+
+---
+
+# Challenges We Faced Today
+
+These are extremely important learning points.
+
+---
+
+# Error 1
+
+```text id="jlwmzo"
+Import block is un-sorted
+```
+
+---
+
+## Why?
+
+Ruff enforces:
+
+```text id="jlwmzp"
+Standard Library
+Third Party
+Local Imports
+```
+
+order.
+
+---
+
+## Fix
+
+```bash id="jlwmzq"
+uv run ruff check . --fix
+```
+
+---
+
+## Lesson
+
+Formatting should be automated.
+
+---
+
+# Error 2
+
+```text id="jlwmzr"
+Unused import Any
+```
+
+---
+
+## Why?
+
+We imported:
+
+```python id="jlwmzs"
+Any
+```
+
+but never used it.
+
+---
+
+## Fix
+
+Ruff removed it.
+
+---
+
+## Lesson
+
+Dead code should not exist.
+
+---
+
+# Error 3
+
+```text id="jlwmzt"
+Item "None" of "Future | None"
+has no attribute "exception"
+```
+
+---
+
+## Why?
+
+Tenacity defines:
+
+```python id="jlwmzu"
+retry_state.outcome
+```
+
+as:
+
+```python id="jlwmzv"
+Future | None
+```
+
+Mypy demanded proof that it wasn't None.
+
+---
+
+## Fix
+
+```python id="jlwmzw"
+if retry_state.outcome is None:
+    return
+```
+
+---
+
+## Lesson
+
+Static analysis requires explicit safety checks.
+
+---
+
+# Error 4
+
+```text id="jlwmzx"
+Item "None" of "WrappedFn | None"
+has no attribute "__name__"
+```
+
+---
+
+## Why?
+
+Tenacity types:
+
+```python id="jlwmzy"
+retry_state.fn
+```
+
+as:
+
+```python id="jlwmzz"
+WrappedFn | None
+```
+
+---
+
+## Fix
+
+```python id="jlwmz10"
+retry_state.fn.__name__
+if retry_state.fn is not None
+else "unknown"
+```
+
+---
+
+## Lesson
+
+Type systems force us to handle edge cases.
+
+---
+
+# Error 5
+
+```text id="jlwmz11"
+Redundant cast
+```
+
+---
+
+## Why?
+
+We added:
+
+```python id="jlwmz12"
+cast(R, ...)
+```
+
+assuming Tenacity needed it.
+
+Current typings already inferred the correct type.
+
+---
+
+## Fix
+
+Removed the cast.
+
+---
+
+## Lesson
+
+Don't overuse casts.
+
+Use them only when truly necessary.
+
+---
+
+# Real-World Use Cases
+
+---
+
+# Example 1 — Naukri API Integration
+
+```python id="jlwmz13"
+@retry(max_attempts=5)
+def fetch_jobs():
+```
+
+If API temporarily returns:
+
+```text id="jlwmz14"
+503
+```
+
+the pipeline recovers automatically.
+
+---
+
+# Example 2 — Snowflake Loading
+
+```python id="jlwmz15"
+@retry()
+def load_to_snowflake():
+```
+
+Temporary connection issue:
+
+```text id="jlwmz16"
+Retry
+```
+
+instead of pipeline failure.
+
+---
+
+# Example 3 — Kafka Consumer
+
+```python id="jlwmz17"
+@retry()
+def consume_messages():
+```
+
+Broker unavailable for a few seconds:
+
+```text id="jlwmz18"
+Consumer survives
+```
+
+instead of crashing.
+
+---
+
+# Example 4 — Azure Blob Storage
+
+```python id="jlwmz19"
+@retry()
+def download_file():
+```
+
+Network timeout:
+
+```text id="jlwmz20"
+Automatic recovery
+```
+
+---
+
+# Architecture After Day 4
+
+```text id="jlwmz21"
+models.py
+      ↓
+config_loader.py
+      ↓
+logger.py
+      ↓
+retry.py
+```
+
+Dependencies:
+
+```text id="jlwmz22"
+retry.py
+ ├── uses models.py
+ ├── uses logger.py
+ └── uses exceptions.py
+```
+
+This shows we are building a layered architecture.
+
+---
+
+# Business Impact
+
+Before Day 4:
+
+```text id="jlwmz23"
+Single Failure
+      ↓
+Pipeline Failure
+```
+
+After Day 4:
+
+```text id="jlwmz24"
+Temporary Failure
+      ↓
+Retry
+      ↓
+Success
+```
+
+Much higher reliability.
+
+---
+
+# One-Line Summary
+
+**Day 4 transformed the library from an observable system into a resilient system by introducing configurable retry policies, exponential backoff, retry logging, fault tolerance, and type-safe retry decorators that automatically recover from transient failures in real-world ETL pipelines.**

@@ -18,23 +18,36 @@ class BaseConfig(BaseModel):
 
 class RetryPolicy(BaseConfig):
     """
-    Retry configuration for retry decorators.
+    Retry configuration.
     """
 
     max_attempts: Annotated[
         int,
-        Field(gt=0, description="Maximum retry attempts"),
+        Field(
+            gt=0,
+            description="Maximum retry attempts",
+        ),
     ] = 3
 
     wait_min: Annotated[
         float,
-        Field(gt=0, description="Minimum wait duration"),
+        Field(
+            gt=0,
+            description="Minimum wait duration",
+        ),
     ] = 1.0
 
     wait_max: Annotated[
         float,
-        Field(gt=0, description="Maximum wait duration"),
+        Field(
+            gt=0,
+            description="Maximum wait duration",
+        ),
     ] = 60.0
+
+    reraise: bool = True
+
+    use_jitter: bool = True
 
 
 class LogContext(BaseConfig):

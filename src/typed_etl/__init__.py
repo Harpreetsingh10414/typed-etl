@@ -11,6 +11,7 @@ from typed_etl.models import (
     LogContext,
     RetryPolicy,
 )
+from typed_etl.retry import retry
 
 __version__ = "0.1.0"
 
@@ -24,4 +25,5 @@ __all__ = [
     "get_logger",
     "bind_correlation_id",
     "log_context",
+    "retry",
 ]
