@@ -36,3 +36,9 @@ class MaxRetriesExceededError(ETLUtilsError):
             f"{attempts} attempts. "
             f"Last error: {original_exception}"
         )
+
+
+class FileReadError(ETLUtilsError):
+    """
+    Raised when file reading fails.
+    """

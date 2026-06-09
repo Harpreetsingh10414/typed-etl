@@ -1,4 +1,5 @@
 from typed_etl.config_loader import load_config
+from typed_etl.file_reader import read_file
 from typed_etl.logger import (
     bind_correlation_id,
     configure_logging,
@@ -26,4 +27,5 @@ __all__ = [
     "bind_correlation_id",
     "log_context",
     "retry",
+    "read_file",
 ]
