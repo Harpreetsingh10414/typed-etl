@@ -11,8 +11,12 @@ from typed_etl.models import (
     FileReaderConfig,
     LogContext,
     RetryPolicy,
+    ValidationConfig,
 )
 from typed_etl.retry import retry
+from typed_etl.validator import (
+    validate_dataframe,
+)
 
 __version__ = "0.1.0"
 
@@ -28,4 +32,6 @@ __all__ = [
     "log_context",
     "retry",
     "read_file",
+    "ValidationConfig",
+    "validate_dataframe",
 ]

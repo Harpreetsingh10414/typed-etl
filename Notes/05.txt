@@ -1,0 +1,859 @@
+# Day 5 Notes — Universal File Reader (The "E" in ETL)
+
+Day 5 is where our project stopped being just an infrastructure library and became a real ETL library.
+
+Before Day 5 we had:
+
+```text id="rq0b7r"
+Config Management
+Logging
+Retry Framework
+```
+
+These are foundational components.
+
+After Day 5 we added:
+
+```text id="cf6nfc"
+Data Extraction
+```
+
+which is the first actual ETL operation.
+
+---
+
+# What Was The Goal Of Day 5?
+
+Build a unified file-reading interface:
+
+```python id="6zx5jf"
+df = read_file("employees.csv")
+```
+
+instead of:
+
+```python id="ct2s4f"
+pl.read_csv(...)
+pl.read_json(...)
+pl.read_parquet(...)
+```
+
+spread throughout every project.
+
+The idea is:
+
+> One API. Multiple formats.
+
+---
+
+# The Real Problem We Are Solving
+
+Imagine three future projects:
+
+### Project 1
+
+Naukri Jobs
+
+```text id="57ltv5"
+jobs.csv
+```
+
+---
+
+### Project 2
+
+PMIS Migration
+
+```text id="53lgdr"
+employees.json
+```
+
+---
+
+### Project 3
+
+Fraud Detection
+
+```text id="5d0t6u"
+transactions.parquet
+```
+
+Without abstraction:
+
+```python id="q8qq5l"
+pl.read_csv(...)
+pl.read_json(...)
+pl.read_parquet(...)
+```
+
+appears everywhere.
+
+Every project repeats the same logic.
+
+---
+
+# Our Solution
+
+Create:
+
+```python id="0q9tzn"
+read_file(...)
+```
+
+which automatically detects:
+
+```text id="6ah78j"
+CSV
+JSON
+Parquet
+```
+
+and loads the correct format.
+
+This is called:
+
+```text id="vjlwm0"
+Abstraction
+```
+
+---
+
+# Why Abstraction Matters
+
+Instead of remembering:
+
+```python id="z2x6u0"
+pl.read_csv()
+pl.read_json()
+pl.read_parquet()
+```
+
+users remember:
+
+```python id="7x3n86"
+read_file()
+```
+
+The implementation becomes centralized.
+
+Future changes happen in one place.
+
+---
+
+# Why We Chose Polars
+
+One of the most important design decisions of Day 5.
+
+---
+
+# Traditional Choice
+
+Most tutorials use:
+
+```python id="jjlwm1"
+pandas
+```
+
+because:
+
+* popular
+* easy
+* well known
+
+---
+
+# Why We Chose Polars
+
+Polars is:
+
+```text id="4l8x7y"
+Rust Based
+Columnar
+Multi-threaded
+Memory Efficient
+Fast
+```
+
+---
+
+# Real Engineering Reason
+
+Modern data workloads are large.
+
+Example:
+
+```text id="jlwm2"
+10 million rows
+```
+
+Pandas often struggles:
+
+```text id="jlwm3"
+High memory
+Slower execution
+```
+
+Polars performs significantly better.
+
+---
+
+# Industry Trend
+
+Modern Data Engineering increasingly uses:
+
+```text id="jlwm4"
+Polars
+DuckDB
+Spark
+```
+
+instead of pure Pandas.
+
+Learning Polars is career relevant.
+
+---
+
+# What We Built
+
+---
+
+# SUPPORTED_FORMATS
+
+We created:
+
+```python id="jlwm5"
+SUPPORTED_FORMATS = {
+    ".csv",
+    ".json",
+    ".parquet",
+}
+```
+
+---
+
+# Why?
+
+Instead of hardcoding:
+
+```python id="jlwm6"
+if suffix == ...
+```
+
+everywhere.
+
+We maintain a single source of truth.
+
+---
+
+# Real Benefit
+
+Adding future support becomes easy.
+
+Example:
+
+```python id="jlwm7"
+".xlsx"
+```
+
+Only update one location.
+
+---
+
+# Unified Reader
+
+We created:
+
+```python id="jlwm8"
+read_file()
+```
+
+which supports:
+
+```python id="jlwm9"
+read_file("data.csv")
+read_file("data.json")
+read_file("data.parquet")
+```
+
+Same API.
+
+Different formats.
+
+---
+
+# Why This Is Powerful
+
+Users no longer care about:
+
+```text id="jlwm10"
+file format
+```
+
+They only care about:
+
+```text id="jlwm11"
+getting a DataFrame
+```
+
+---
+
+# Consistent Return Type
+
+Every call returns:
+
+```python id="jlwm12"
+pl.DataFrame
+```
+
+---
+
+# Why?
+
+Consistency.
+
+Whether the source is:
+
+```text id="jlwm13"
+CSV
+JSON
+Parquet
+```
+
+the result is always:
+
+```python id="jlwm14"
+DataFrame
+```
+
+---
+
+# Real Engineering Principle
+
+Good APIs reduce cognitive load.
+
+Users shouldn't need to think:
+
+```text id="jlwm15"
+Which function should I call?
+```
+
+---
+
+# Path Handling
+
+We implemented:
+
+```python id="jlwm16"
+path: str | Path
+```
+
+---
+
+# Why?
+
+Supports:
+
+```python id="jlwm17"
+read_file("employees.csv")
+```
+
+and:
+
+```python id="jlwm18"
+read_file(
+    Path("employees.csv")
+)
+```
+
+---
+
+# Why Path Is Better Than os.path
+
+Modern Python favors:
+
+```python id="jlwm19"
+pathlib.Path
+```
+
+because:
+
+```python id="jlwm20"
+path.suffix
+path.exists()
+path.name
+```
+
+are cleaner than:
+
+```python id="jlwm21"
+os.path.splitext()
+os.path.exists()
+```
+
+---
+
+# Logging Integration
+
+Day 5 integrated with Day 3.
+
+---
+
+# File Read Start
+
+We added:
+
+```python id="jlwm22"
+logger.info(
+    "file_read_started"
+)
+```
+
+---
+
+# Why?
+
+Creates visibility into pipeline execution.
+
+---
+
+# Example Log
+
+```json id="jlwm23"
+{
+  "event":"file_read_started",
+  "file":"employees.csv"
+}
+```
+
+---
+
+# File Read Completion
+
+We added:
+
+```python id="jlwm24"
+logger.info(
+    "file_read_completed"
+)
+```
+
+---
+
+# Example
+
+```json id="jlwm25"
+{
+  "rows": 10000,
+  "columns": 12
+}
+```
+
+---
+
+# Why This Matters
+
+Imagine production issue:
+
+```text id="jlwm26"
+Did file load?
+How many rows?
+How many columns?
+```
+
+Logs answer immediately.
+
+---
+
+# Exception Handling
+
+We added:
+
+```python id="jlwm27"
+FileReadError
+```
+
+---
+
+# Why?
+
+Different failures need different exceptions.
+
+---
+
+# UnsupportedFileFormatError
+
+Handles:
+
+```text id="jlwm28"
+xlsx
+xml
+txt
+```
+
+unsupported formats.
+
+---
+
+# FileReadError
+
+Handles:
+
+```text id="jlwm29"
+Corrupt File
+Permission Denied
+Malformed JSON
+```
+
+supported format but failed read.
+
+---
+
+# Why Separate Exceptions?
+
+Bad:
+
+```python id="jlwm30"
+Exception
+```
+
+Everything looks identical.
+
+---
+
+# Better
+
+```python id="jlwm31"
+UnsupportedFileFormatError
+FileReadError
+```
+
+Specific failures.
+
+Specific handling.
+
+---
+
+# Architecture Integration
+
+Day 5 is the first module that uses nearly everything built before.
+
+---
+
+# Uses Models
+
+```python id="jlwm32"
+FileReaderConfig
+```
+
+---
+
+# Uses Exceptions
+
+```python id="jlwm33"
+FileReadError
+UnsupportedFileFormatError
+```
+
+---
+
+# Uses Logger
+
+```python id="分快三34"
+get_logger()
+```
+
+---
+
+# Uses Future Retry Capability
+
+Potential future:
+
+```python id="分快三35"
+@retry()
+read_file(...)
+```
+
+---
+
+# Real-World Example 1
+
+Naukri Data Pipeline
+
+```python id="分快三36"
+jobs_df = read_file(
+    "jobs.csv"
+)
+```
+
+Then:
+
+```python id="分快三37"
+transform()
+load()
+```
+
+---
+
+# Real-World Example 2
+
+Government Migration
+
+```python id="分快三38"
+employees_df = read_file(
+    "employees.json"
+)
+```
+
+---
+
+# Real-World Example 3
+
+Data Warehouse
+
+```python id="分快三39"
+transactions_df = read_file(
+    "transactions.parquet"
+)
+```
+
+---
+
+# Real-World Example 4
+
+Fraud Detection
+
+```python id="分快三40"
+raw_transactions = read_file(
+    "transactions.parquet"
+)
+```
+
+Then:
+
+```text id="分快三41"
+Feature Engineering
+Anomaly Detection
+Fraud Scoring
+```
+
+---
+
+# Challenges We Faced
+
+Day 5 was generally smoother than Day 3 and Day 4 because we already had:
+
+```text id="分快三42"
+Typing
+Logging
+Exceptions
+Architecture
+```
+
+in place.
+
+---
+
+# Challenge 1
+
+Designing a consistent API.
+
+Question:
+
+```text id="分快三43"
+Separate functions?
+
+read_csv()
+read_json()
+read_parquet()
+```
+
+or
+
+```text id="分快三44"
+One unified function?
+```
+
+---
+
+# Solution
+
+Unified API:
+
+```python id="分快三45"
+read_file()
+```
+
+---
+
+# Why?
+
+Simpler user experience.
+
+---
+
+# Challenge 2
+
+Choosing Pandas vs Polars.
+
+---
+
+## Pandas
+
+Pros:
+
+```text id="分快三46"
+Popular
+Mature
+Huge ecosystem
+```
+
+Cons:
+
+```text id="分快三47"
+Memory heavy
+Slower for large datasets
+```
+
+---
+
+## Polars
+
+Pros:
+
+```text id="分快三48"
+Fast
+Modern
+Memory efficient
+Multi-threaded
+```
+
+---
+
+## Decision
+
+Polars.
+
+Because this project targets modern Data Engineering.
+
+---
+
+# Challenge 3
+
+Separating File Format Errors From Read Errors.
+
+---
+
+## Bad Design
+
+```python id="分快三49"
+Exception
+```
+
+for everything.
+
+---
+
+## Better Design
+
+```python id="分快三50"
+UnsupportedFileFormatError
+FileReadError
+```
+
+---
+
+# Lesson
+
+Specific exceptions make debugging easier.
+
+---
+
+# Business Impact
+
+Before Day 5:
+
+```text id="分快三51"
+Infrastructure Library
+```
+
+After Day 5:
+
+```text id="分快三52"
+Actual ETL Library
+```
+
+Because we can now:
+
+```text id="分快三53"
+Extract Data
+```
+
+which is literally the "E" in ETL.
+
+---
+
+# Architecture After Day 5
+
+```text id="分快三54"
+models.py
+       ↓
+config_loader.py
+       ↓
+logger.py
+       ↓
+retry.py
+       ↓
+file_reader.py
+```
+
+Notice:
+
+```text id="分快三55"
+file_reader.py
+```
+
+depends on:
+
+* models
+* exceptions
+* logger
+
+showing our layered architecture is working.
+
+---
+
+# Interview Questions You Can Answer
+
+### Why use Polars instead of Pandas?
+
+Polars is faster, more memory efficient, multi-threaded, and increasingly adopted in modern Data Engineering workloads.
+
+---
+
+### Why create a unified file reader?
+
+To eliminate duplicated file handling logic and provide a consistent API regardless of file format.
+
+---
+
+### Why return a single DataFrame type?
+
+Consistency. Users should not need to care whether the source was CSV, JSON, or Parquet.
+
+---
+
+### Why log file reads?
+
+To improve observability and simplify debugging in production environments.
+
+---
+
+### Why separate UnsupportedFileFormatError and FileReadError?
+
+One represents an unsupported input type, the other represents a failure while processing a supported type.
+
+---
+
+# One-Line Summary
+
+**Day 5 introduced the extraction layer of the ETL library by building a unified, typed, observable file reader that can load CSV, JSON, and Parquet files through a single API while leveraging the configuration, logging, exception handling, and architectural foundations built in previous days.**

@@ -71,3 +71,17 @@ class FileReaderConfig(BaseConfig):
     null_values: list[str] | None = None
 
     schema_overrides: dict[str, str] | None = None
+
+
+class ValidationConfig(BaseConfig):
+    """
+    Data validation configuration.
+    """
+
+    required_columns: list[str] = []
+
+    non_nullable_columns: list[str] = []
+
+    unique_columns: list[str] = []
+
+    expected_schema: dict[str, str] = {}

@@ -42,3 +42,9 @@ class FileReadError(ETLUtilsError):
     """
     Raised when file reading fails.
     """
+
+
+class DataValidationError(ETLUtilsError):
+    """
+    Raised when dataframe validation fails.
+    """

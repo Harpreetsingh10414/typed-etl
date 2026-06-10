@@ -1,0 +1,978 @@
+# Day 6 Notes — Data Validation Framework (Trusting the Data)
+
+Day 6 is one of the most important days of the entire project.
+
+Why?
+
+Because until Day 5 we had built a system that could:
+
+```text
+Read Data
+Log Events
+Retry Failures
+```
+
+But we still had no guarantee that the data itself was correct.
+
+Day 6 solves:
+
+```text
+Data Quality
+```
+
+---
+
+# What Was The Goal Of Day 6?
+
+The goal was to ensure:
+
+```text
+Only valid data moves through the ETL pipeline.
+```
+
+Before Day 6:
+
+```python
+df = read_file("employees.csv")
+```
+
+File loaded successfully.
+
+Pipeline continues.
+
+But:
+
+```text
+File Loaded Successfully
+≠
+Data Is Correct
+```
+
+This is one of the biggest misconceptions in Data Engineering.
+
+---
+
+# The Problem We Are Solving
+
+Imagine:
+
+```csv
+employee_id,name,salary
+1,John,50000
+2,,70000
+2,Alice,90000
+```
+
+File loads successfully.
+
+But data contains:
+
+```text
+Missing name
+Duplicate employee_id
+```
+
+If this reaches:
+
+```text
+Transform Layer
+Database Layer
+Analytics Layer
+```
+
+bad data spreads everywhere.
+
+---
+
+# The Concept Behind Day 6
+
+Day 6 introduces:
+
+```text
+Data Validation Layer
+```
+
+Architecture becomes:
+
+```text
+Read
+ ↓
+Validate
+ ↓
+Transform
+ ↓
+Load
+```
+
+Instead of:
+
+```text
+Read
+ ↓
+Transform
+ ↓
+Load
+```
+
+---
+
+# Most Important Concept Learned
+
+## GIGO
+
+```text
+Garbage In
+Garbage Out
+```
+
+Meaning:
+
+If bad data enters the system:
+
+```text
+Bad Reports
+Bad Dashboards
+Bad Decisions
+```
+
+will come out.
+
+No amount of engineering can fix fundamentally bad input data.
+
+---
+
+# Why Validation Exists
+
+Validation acts as a checkpoint.
+
+Think of it as:
+
+```text
+Airport Security
+```
+
+Before entering:
+
+```text
+Flight
+```
+
+you must pass:
+
+```text
+Validation
+```
+
+Bad data gets stopped immediately.
+
+---
+
+# What We Built
+
+We created:
+
+```python
+validate_dataframe()
+```
+
+This became the main public API.
+
+Instead of:
+
+```python
+validate_required_columns()
+validate_unique()
+validate_schema()
+```
+
+being called everywhere,
+
+users simply call:
+
+```python
+validate_dataframe(
+    df,
+    config,
+)
+```
+
+---
+
+# Why This Design Is Better
+
+Bad:
+
+```python
+validate_required_columns(...)
+validate_no_nulls(...)
+validate_unique(...)
+validate_schema(...)
+```
+
+Every pipeline repeats this.
+
+---
+
+# Better
+
+```python
+validate_dataframe(...)
+```
+
+Single entry point.
+
+Cleaner.
+
+More maintainable.
+
+More scalable.
+
+---
+
+# Validation Type 1
+
+## Required Columns
+
+We implemented:
+
+```python
+validate_required_columns(...)
+```
+
+---
+
+# Problem
+
+Expected:
+
+```text
+employee_id
+name
+salary
+```
+
+Received:
+
+```text
+name
+salary
+```
+
+Missing:
+
+```text
+employee_id
+```
+
+---
+
+# Why This Matters
+
+Imagine:
+
+```text
+NDMC Employee Master Migration
+```
+
+Without:
+
+```text
+employee_id
+```
+
+you cannot identify employees.
+
+Pipeline must stop immediately.
+
+---
+
+# Validation Type 2
+
+## Null Validation
+
+We implemented:
+
+```python
+validate_no_nulls(...)
+```
+
+---
+
+# Problem
+
+```csv
+employee_id,name
+1,John
+2,
+```
+
+Name missing.
+
+---
+
+# Why This Matters
+
+Imagine:
+
+```text
+Passport Number
+Aadhaar Number
+PAN Number
+Employee ID
+```
+
+being null.
+
+Records become unusable.
+
+---
+
+# Validation Type 3
+
+## Uniqueness Validation
+
+We implemented:
+
+```python
+validate_unique(...)
+```
+
+---
+
+# Problem
+
+```csv
+employee_id,name
+1,John
+1,Alice
+```
+
+Duplicate primary key.
+
+---
+
+# Real World Consequences
+
+Payroll system:
+
+```text
+Employee ID duplicated
+```
+
+Possible effects:
+
+```text
+Wrong salary
+Wrong attendance
+Wrong reporting
+```
+
+Huge business impact.
+
+---
+
+# Validation Type 4
+
+## Schema Validation
+
+We implemented:
+
+```python
+validate_schema(...)
+```
+
+---
+
+# Problem
+
+Expected:
+
+```text
+employee_id → Int64
+salary → Int64
+```
+
+Received:
+
+```text
+employee_id → String
+salary → String
+```
+
+---
+
+# Why This Matters
+
+Many downstream operations depend on data types.
+
+Example:
+
+```python
+salary * 1.1
+```
+
+Works on:
+
+```text
+Int64
+```
+
+Fails on:
+
+```text
+String
+```
+
+---
+
+# ValidationConfig
+
+We created:
+
+```python
+ValidationConfig
+```
+
+Example:
+
+```python
+ValidationConfig(
+    required_columns=[
+        "employee_id",
+        "name",
+    ],
+    non_nullable_columns=[
+        "employee_id",
+    ],
+    unique_columns=[
+        "employee_id",
+    ],
+    expected_schema={
+        "employee_id": "Int64",
+        "name": "String",
+    },
+)
+```
+
+---
+
+# Why Configuration Matters
+
+Instead of changing code:
+
+```python
+if column == ...
+```
+
+users configure rules.
+
+Much more flexible.
+
+---
+
+# Real World Example
+
+Department A:
+
+```python
+required_columns=[
+    "employee_id",
+    "name",
+]
+```
+
+Department B:
+
+```python
+required_columns=[
+    "student_id",
+    "course_id",
+]
+```
+
+Same validator.
+
+Different configuration.
+
+---
+
+# Integration With Previous Days
+
+---
+
+# Day 2 Integration
+
+Uses:
+
+```python
+ValidationConfig
+```
+
+from our configuration layer.
+
+---
+
+# Day 3 Integration
+
+Uses:
+
+```python
+logger.info(...)
+```
+
+for:
+
+```text
+validation_started
+validation_passed
+```
+
+---
+
+# Example
+
+```json
+{
+  "event":"validation_started",
+  "rows":10000
+}
+```
+
+---
+
+# Day 4 Integration
+
+Validation failures:
+
+```text
+Should NOT Retry
+```
+
+because:
+
+```text
+Missing Column
+```
+
+is not a transient error.
+
+Retrying won't help.
+
+---
+
+# Important Engineering Lesson
+
+Understand the difference:
+
+## Transient Errors
+
+Temporary.
+
+Examples:
+
+```text
+Network Timeout
+API Failure
+Connection Reset
+```
+
+Retry helps.
+
+---
+
+## Deterministic Errors
+
+Permanent.
+
+Examples:
+
+```text
+Missing Column
+Duplicate ID
+Null Value
+```
+
+Retry useless.
+
+---
+
+# Day 5 Integration
+
+Flow now becomes:
+
+```python
+df = read_file(...)
+
+validate_dataframe(
+    df,
+    config,
+)
+```
+
+Exactly how production pipelines operate.
+
+---
+
+# Architecture After Day 6
+
+```text
+models.py
+        ↓
+config_loader.py
+        ↓
+logger.py
+        ↓
+retry.py
+        ↓
+file_reader.py
+        ↓
+validator.py
+```
+
+---
+
+# Real-World Use Cases
+
+---
+
+# Use Case 1
+
+Naukri Job Data
+
+Expected:
+
+```text
+job_id
+title
+company
+```
+
+Validation ensures:
+
+```text
+No missing job IDs
+No duplicate jobs
+Correct schema
+```
+
+before loading into warehouse.
+
+---
+
+# Use Case 2
+
+Government Employee Migration
+
+Expected:
+
+```text
+employee_id
+employee_name
+department
+```
+
+Validation catches:
+
+```text
+Missing employee IDs
+Wrong column names
+Duplicate employees
+```
+
+before migration.
+
+---
+
+# Use Case 3
+
+Fraud Detection Pipeline
+
+Expected:
+
+```text
+transaction_id
+amount
+timestamp
+```
+
+Validation ensures:
+
+```text
+No missing transactions
+No duplicate transaction IDs
+Correct datatypes
+```
+
+before fraud analysis.
+
+---
+
+# Use Case 4
+
+Snowflake Data Warehouse Load
+
+Before:
+
+```text
+CSV
+ ↓
+Snowflake
+```
+
+Now:
+
+```text
+CSV
+ ↓
+Validation
+ ↓
+Snowflake
+```
+
+Much safer.
+
+---
+
+# Challenges We Encountered
+
+---
+
+# Error 1
+
+```text
+schema field conflict
+```
+
+---
+
+## Why?
+
+We initially created:
+
+```python
+schema: dict[str, str]
+```
+
+inside:
+
+```python
+ValidationConfig
+```
+
+But Pydantic already has:
+
+```python
+schema()
+```
+
+method.
+
+Mypy interpreted:
+
+```python
+config.schema
+```
+
+as:
+
+```python
+Callable
+```
+
+instead of:
+
+```python
+dict
+```
+
+---
+
+## Error
+
+```text
+Argument has incompatible type
+Callable[...] expected dict[str, str]
+```
+
+---
+
+## Fix
+
+Renamed:
+
+```python
+schema
+```
+
+to:
+
+```python
+expected_schema
+```
+
+---
+
+## Lesson
+
+Avoid naming fields that collide with framework internals.
+
+Examples:
+
+```text
+schema
+json
+dict
+copy
+fields
+```
+
+can cause problems.
+
+---
+
+# Error 2
+
+```text
+ValidationConfig updates required
+```
+
+After renaming:
+
+```python
+expected_schema
+```
+
+we also updated:
+
+```python
+validator.py
+scratch_validator.py
+```
+
+to use:
+
+```python
+config.expected_schema
+```
+
+---
+
+## Lesson
+
+Refactoring often requires updating all dependent code.
+
+---
+
+# Engineering Concepts Learned
+
+---
+
+# Fail Fast
+
+Most important principle of Day 6.
+
+Instead of:
+
+```text
+Read
+Transform
+Aggregate
+Join
+Load
+Fail
+```
+
+after 30 minutes,
+
+we do:
+
+```text
+Read
+Validate
+Fail
+```
+
+after 2 seconds.
+
+---
+
+# Benefits
+
+```text
+Faster debugging
+Lower cost
+Cleaner pipelines
+Better reliability
+```
+
+---
+
+# Data Contracts
+
+Another important concept.
+
+A Data Contract defines:
+
+```text
+Required Columns
+Expected Types
+Business Rules
+```
+
+Validation enforces the contract.
+
+---
+
+# Business Impact
+
+Before Day 6:
+
+```text
+Can Read Data
+```
+
+After Day 6:
+
+```text
+Can Trust Data
+```
+
+Huge difference.
+
+---
+
+# Interview Questions You Can Now Answer
+
+### What is GIGO?
+
+Garbage In, Garbage Out. Poor quality input inevitably leads to poor quality output.
+
+---
+
+### Why validate data immediately after reading?
+
+To fail fast and prevent bad data from spreading downstream.
+
+---
+
+### What is a data contract?
+
+A formal agreement describing expected schema, types, and business rules for data.
+
+---
+
+### Why shouldn't validation errors be retried?
+
+Because they are deterministic data issues, not transient infrastructure issues.
+
+---
+
+### Why separate validation rules into configuration?
+
+To make validation reusable and adaptable across different datasets without changing code.
+
+---
+
+# One-Line Summary
+
+**Day 6 transformed the library from a system that could read data into a system that could trust data by introducing configurable dataframe validation, fail-fast design, data contracts, schema enforcement, uniqueness checks, null validation, and data quality controls that prevent bad data from propagating through ETL pipelines.**
