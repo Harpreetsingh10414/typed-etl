@@ -48,3 +48,9 @@ class DataValidationError(ETLUtilsError):
     """
     Raised when dataframe validation fails.
     """
+
+
+class TransformationError(ETLUtilsError):
+    """
+    Raised when dataframe transformation fails.
+    """

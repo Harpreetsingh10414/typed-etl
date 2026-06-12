@@ -1,0 +1,976 @@
+# Day 7 Notes — Transformation Layer (The "T" in ETL)
+
+Day 7 is one of the most important milestones in the project because this is where raw data finally starts becoming business-ready data.
+
+Until Day 6, our library could:
+
+```text
+Read Data
+Validate Data
+```
+
+But organizations do not derive value from raw data.
+
+They derive value from:
+
+```text
+Transformed Data
+```
+
+Day 7 solves exactly this problem.
+
+---
+
+# What Was The Goal Of Day 7?
+
+Build a reusable transformation framework for ETL pipelines.
+
+The goal was to convert:
+
+```text
+Raw Data
+      ↓
+Business Data
+```
+
+using reusable functions.
+
+Before Day 7:
+
+```python
+df = read_file(...)
+
+validate_dataframe(...)
+```
+
+After Day 7:
+
+```python
+df = read_file(...)
+
+validate_dataframe(...)
+
+df = rename_columns(...)
+df = drop_duplicates(...)
+df = fill_nulls(...)
+df = cast_columns(...)
+```
+
+Now we have:
+
+```text
+Extract
+Validate
+Transform
+```
+
+which forms the core of almost every Data Engineering pipeline.
+
+---
+
+# Why Do Transformations Exist?
+
+Raw data is rarely useful.
+
+Example:
+
+Input:
+
+```csv
+emp_id,name,salary
+1,John,50000
+2,Alice,70000
+```
+
+Business requirement:
+
+```text
+Use employee_id instead of emp_id
+```
+
+Result:
+
+```csv
+employee_id,name,salary
+1,John,50000
+2,Alice,70000
+```
+
+This is transformation.
+
+---
+
+# Real-World Truth
+
+In real ETL systems:
+
+```text
+Extract   → 10%
+Validate  → 10%
+Transform → 70%
+Load      → 10%
+```
+
+Most engineering effort goes into transformation.
+
+Why?
+
+Because business logic lives here.
+
+---
+
+# Design Philosophy of Day 7
+
+We intentionally avoided creating:
+
+```python
+transform_dataframe(...)
+```
+
+because transformations are highly business-specific.
+
+Instead we built:
+
+```python
+rename_columns()
+select_columns()
+drop_duplicates()
+fill_nulls()
+cast_columns()
+```
+
+This follows the philosophy of:
+
+```text
+Small
+Reusable
+Composable
+Functions
+```
+
+---
+
+# Engineering Principle: Composition Over Monoliths
+
+Bad:
+
+```python
+transform_everything(df)
+```
+
+Huge function.
+
+Difficult to test.
+
+Difficult to debug.
+
+---
+
+Good:
+
+```python
+df = rename_columns(df, ...)
+
+df = fill_nulls(df, ...)
+
+df = cast_columns(df, ...)
+```
+
+Each function performs exactly one task.
+
+This follows the:
+
+```text
+Single Responsibility Principle (SRP)
+```
+
+from SOLID principles.
+
+---
+
+# Transformation 1 — Rename Columns
+
+We implemented:
+
+```python
+rename_columns()
+```
+
+---
+
+## Problem
+
+Different systems use different names.
+
+Example:
+
+System A:
+
+```text
+emp_id
+```
+
+System B:
+
+```text
+employee_id
+```
+
+System C:
+
+```text
+staff_id
+```
+
+---
+
+## Solution
+
+```python
+rename_columns(
+    df,
+    {
+        "emp_id": "employee_id"
+    }
+)
+```
+
+---
+
+# Real-World Example
+
+Government migration projects often integrate multiple departments.
+
+One system may use:
+
+```text
+emp_code
+```
+
+while another uses:
+
+```text
+employee_number
+```
+
+Standardization becomes mandatory.
+
+---
+
+# Transformation 2 — Select Columns
+
+We implemented:
+
+```python
+select_columns()
+```
+
+---
+
+## Problem
+
+Input:
+
+```csv
+employee_id,name,salary,address,email
+```
+
+Analytics only needs:
+
+```text
+employee_id
+name
+salary
+```
+
+---
+
+## Solution
+
+```python
+select_columns(
+    df,
+    [
+        "employee_id",
+        "name",
+        "salary",
+    ],
+)
+```
+
+---
+
+# Why This Matters
+
+Benefits:
+
+```text
+Less Memory Usage
+Faster Queries
+Better Security
+Reduced Storage
+```
+
+---
+
+# Real-World Example
+
+HR data may contain:
+
+```text
+Address
+Phone Number
+PAN Number
+```
+
+Analytics team should not receive sensitive information unnecessarily.
+
+---
+
+# Transformation 3 — Drop Duplicates
+
+We implemented:
+
+```python
+drop_duplicates()
+```
+
+---
+
+## Problem
+
+Input:
+
+```csv
+employee_id,name
+1,John
+1,John
+2,Alice
+```
+
+Duplicate rows.
+
+---
+
+## Solution
+
+```python
+drop_duplicates(
+    df,
+    subset=["employee_id"],
+)
+```
+
+---
+
+# Real-World Example
+
+Naukri APIs may return the same job multiple times.
+
+Deduplication prevents:
+
+```text
+Duplicate Database Records
+Duplicate Notifications
+Duplicate Analytics
+```
+
+---
+
+# Transformation 4 — Fill Null Values
+
+We implemented:
+
+```python
+fill_nulls()
+```
+
+---
+
+## Problem
+
+Input:
+
+```csv
+department
+NULL
+IT
+HR
+```
+
+---
+
+## Solution
+
+```python
+fill_nulls(
+    df,
+    {
+        "department": "Unknown",
+    },
+)
+```
+
+---
+
+# Why This Matters
+
+Many BI tools and dashboards do not handle null values well.
+
+Replacing nulls improves:
+
+```text
+Reporting
+Analytics
+Visualization
+```
+
+---
+
+# Real-World Example
+
+Missing department:
+
+```text
+NULL
+```
+
+becomes:
+
+```text
+Unknown
+```
+
+making reports easier to understand.
+
+---
+
+# Transformation 5 — Type Casting
+
+We implemented:
+
+```python
+cast_columns()
+```
+
+---
+
+## Problem
+
+CSV files often load numeric data as strings.
+
+Example:
+
+```text
+salary = "50000"
+```
+
+instead of:
+
+```text
+salary = 50000
+```
+
+---
+
+## Solution
+
+```python
+cast_columns(
+    df,
+    {
+        "salary": pl.Int64,
+    },
+)
+```
+
+---
+
+# Why This Matters
+
+Operations like:
+
+```python
+salary > 50000
+```
+
+only work on numeric types.
+
+---
+
+# Real-World Example
+
+Fraud Detection:
+
+```text
+transaction_amount
+```
+
+must be numeric.
+
+Otherwise:
+
+```python
+amount > 10000
+```
+
+fails.
+
+---
+
+# Why We Used Polars
+
+Instead of Pandas we used:
+
+```python
+polars
+```
+
+because it is:
+
+```text
+Fast
+Memory Efficient
+Multi-threaded
+Rust-based
+```
+
+Modern Data Engineering increasingly uses:
+
+```text
+Polars
+DuckDB
+Spark
+```
+
+---
+
+# Important Concept: Immutability
+
+Polars transformations return new DataFrames.
+
+Example:
+
+```python
+new_df = df.rename(...)
+```
+
+instead of modifying:
+
+```python
+df
+```
+
+directly.
+
+---
+
+# Why Is Immutability Important?
+
+Benefits:
+
+```text
+Safer Code
+Fewer Bugs
+Easier Debugging
+Predictable Behavior
+```
+
+---
+
+# Logging Integration (Day 3)
+
+Every transformation logs events.
+
+Example:
+
+```json
+{
+  "event": "rename_columns_started"
+}
+```
+
+and
+
+```json
+{
+  "event": "rename_columns_completed"
+}
+```
+
+---
+
+# Why Logging Matters
+
+Suppose production fails.
+
+Logs answer:
+
+```text
+Which transformation failed?
+How many rows existed?
+Which columns changed?
+```
+
+---
+
+# Exception Handling
+
+We introduced:
+
+```python
+TransformationError
+```
+
+---
+
+# Why?
+
+Bad:
+
+```python
+Exception
+```
+
+Generic.
+
+---
+
+Better:
+
+```python
+TransformationError
+```
+
+Specific and meaningful.
+
+---
+
+# Integration With Previous Days
+
+---
+
+# Day 2 Integration
+
+Uses typed models and configuration patterns.
+
+---
+
+# Day 3 Integration
+
+Uses structured logging.
+
+---
+
+# Day 4 Integration
+
+Most transformations do NOT require retries.
+
+Because:
+
+```text
+Column Missing
+Invalid Type
+```
+
+are deterministic failures.
+
+Retrying won't help.
+
+---
+
+# Day 5 Integration
+
+Input:
+
+```python
+df = read_file(...)
+```
+
+---
+
+# Day 6 Integration
+
+Validation occurs before transformation:
+
+```python
+validate_dataframe(...)
+```
+
+---
+
+# Full Pipeline Now
+
+```python
+df = read_file(...)
+
+validate_dataframe(
+    df,
+    config,
+)
+
+df = rename_columns(...)
+
+df = drop_duplicates(...)
+
+df = fill_nulls(...)
+
+df = cast_columns(...)
+```
+
+This resembles a real ETL pipeline.
+
+---
+
+# Real-World Use Cases
+
+## Use Case 1: Naukri ETL
+
+Input:
+
+```text
+Job_Title
+CompanyName
+```
+
+Transform:
+
+```text
+job_title
+company_name
+```
+
+for consistent analytics.
+
+---
+
+## Use Case 2: Employee Migration
+
+Input:
+
+```text
+emp_id
+```
+
+Transform:
+
+```text
+employee_id
+```
+
+before database migration.
+
+---
+
+## Use Case 3: Fraud Detection
+
+Input:
+
+```text
+amount = "10000"
+```
+
+Transform:
+
+```text
+amount = 10000
+```
+
+numeric for ML models.
+
+---
+
+## Use Case 4: HR Analytics
+
+Replace missing departments:
+
+```text
+NULL → Unknown
+```
+
+before dashboard generation.
+
+---
+
+# Challenges We Encountered
+
+Day 7 was relatively smoother because previous days had already established:
+
+```text
+Logging
+Typing
+Validation
+Exceptions
+Architecture
+```
+
+The biggest design challenge was:
+
+```text
+Should we create one giant transformer?
+```
+
+We chose:
+
+```text
+Composable Functions
+```
+
+because they are:
+
+```text
+Reusable
+Testable
+Maintainable
+```
+
+---
+
+# Engineering Concepts Learned
+
+---
+
+## Single Responsibility Principle
+
+Each function does one thing:
+
+```python
+rename_columns()
+```
+
+only renames.
+
+```python
+fill_nulls()
+```
+
+only fills nulls.
+
+---
+
+## Immutability
+
+Transformations return new DataFrames.
+
+No hidden side effects.
+
+---
+
+## Composition
+
+Build pipelines from small functions.
+
+---
+
+## Data Standardization
+
+Convert inconsistent representations into one standard format.
+
+Example:
+
+```text
+M
+Male
+male
+```
+
+becomes:
+
+```text
+Male
+```
+
+---
+
+# Business Impact
+
+Before Day 7:
+
+```text
+Can Read Data
+Can Validate Data
+```
+
+After Day 7:
+
+```text
+Can Produce Business-Ready Data
+```
+
+This is where raw information starts becoming usable for:
+
+```text
+Dashboards
+Machine Learning
+Analytics
+Data Warehouses
+Reports
+```
+
+---
+
+# Architecture After Day 7
+
+```text
+models.py
+        ↓
+config_loader.py
+        ↓
+logger.py
+        ↓
+retry.py
+        ↓
+file_reader.py
+        ↓
+validator.py
+        ↓
+transformer.py
+```
+
+We now support:
+
+```text
+Extract
+Validate
+Transform
+```
+
+which is the heart of ETL.
+
+---
+
+# Interview Questions You Can Answer
+
+### Why separate validation and transformation?
+
+Validation checks correctness. Transformation changes data into the required business format.
+
+---
+
+### Why use small transformation functions?
+
+Improves reusability, testing, and maintainability.
+
+---
+
+### Why is immutability important?
+
+It prevents accidental modifications and makes debugging easier.
+
+---
+
+### Why use vectorized transformations instead of loops?
+
+Vectorized operations are significantly faster and scale better for large datasets.
+
+---
+
+### What is data standardization?
+
+Converting inconsistent data representations into a common format.
+
+---
+
+# One-Line Summary
+
+**Day 7 transformed the project from a data ingestion library into a business-ready ETL framework by introducing reusable, composable, and observable dataframe transformations that standardize, clean, enrich, and prepare validated data for downstream analytics and storage.**

@@ -14,6 +14,13 @@ from typed_etl.models import (
     ValidationConfig,
 )
 from typed_etl.retry import retry
+from typed_etl.transformer import (
+    cast_columns,
+    drop_duplicates,
+    fill_nulls,
+    rename_columns,
+    select_columns,
+)
 from typed_etl.validator import (
     validate_dataframe,
 )
@@ -34,4 +41,9 @@ __all__ = [
     "read_file",
     "ValidationConfig",
     "validate_dataframe",
+    "rename_columns",
+    "select_columns",
+    "drop_duplicates",
+    "fill_nulls",
+    "cast_columns",
 ]
