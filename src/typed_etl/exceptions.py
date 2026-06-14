@@ -54,3 +54,9 @@ class TransformationError(ETLUtilsError):
     """
     Raised when dataframe transformation fails.
     """
+
+
+class FileWriteError(ETLUtilsError):
+    """
+    Raised when writing a file fails.
+    """

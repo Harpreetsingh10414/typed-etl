@@ -24,6 +24,7 @@ from typed_etl.transformer import (
 from typed_etl.validator import (
     validate_dataframe,
 )
+from typed_etl.writer import write_file
 
 __version__ = "0.1.0"
 
@@ -46,4 +47,5 @@ __all__ = [
     "drop_duplicates",
     "fill_nulls",
     "cast_columns",
+    "write_file",
 ]
