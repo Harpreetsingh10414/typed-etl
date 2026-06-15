@@ -86,6 +86,7 @@ def drop_duplicates(
     try:
         result = df.unique(
             subset=list(subset) if subset else None,
+            maintain_order=True,
         )
 
         logger.info(

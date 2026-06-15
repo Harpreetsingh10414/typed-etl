@@ -13,6 +13,7 @@ from typed_etl.models import (
     RetryPolicy,
     ValidationConfig,
 )
+from typed_etl.pipeline import ETLPipeline
 from typed_etl.retry import retry
 from typed_etl.transformer import (
     cast_columns,
@@ -48,4 +49,5 @@ __all__ = [
     "fill_nulls",
     "cast_columns",
     "write_file",
+    "ETLPipeline",
 ]

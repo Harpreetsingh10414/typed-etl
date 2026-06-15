@@ -60,3 +60,9 @@ class FileWriteError(ETLUtilsError):
     """
     Raised when writing a file fails.
     """
+
+
+class PipelineExecutionError(ETLUtilsError):
+    """
+    Raised when pipeline execution fails.
+    """
