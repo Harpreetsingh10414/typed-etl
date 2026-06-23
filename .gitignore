@@ -4,20 +4,19 @@
 # Python
 __pycache__/
 *.pyc
-.pytest_cache/
+
+# Tool Caches
 .mypy_cache/
 .ruff_cache/
-.coverage
-htmlcov/
+.pytest_cache/
 
-# macOS
-.DS_Store
-
-# IDE
-.vscode/
-.idea/
-
-# Build
+# Build Artifacts
 dist/
 build/
 *.egg-info/
+
+# Generated Files
+output/
+
+# macOS
+.DS_Store
