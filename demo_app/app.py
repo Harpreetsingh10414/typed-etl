@@ -1,3 +1,5 @@
+# ruff: noqa: E402
+import sys
 import tempfile
 from io import BytesIO
 from pathlib import Path
@@ -5,6 +7,10 @@ from pathlib import Path
 import polars as pl
 import streamlit as st
 
+project_root = Path(__file__).resolve().parents[1]
+sys.path.append(str(project_root / "src"))
+
+# noqa: E402
 from typed_etl import (
     ETLPipeline,
     drop_duplicates,
